@@ -37,15 +37,15 @@ brews:
     repository:
       owner: sebaswvv
       name: homebrew-tap
-    folder: Formula
+    directory: Formula
     homepage: "https://github.com/sebaswvv/lan-share"
     description: "Share files instantly over your local network with QR codes"
     license: "MIT"
 
-scoop:
-  bucket:
-    owner: sebaswvv
-    name: scoop-bucket
-  homepage: "https://github.com/sebaswvv/lan-share"
-  description: "Share files instantly over your local network with QR codes"
-  license: "MIT"
+scoops:
+  - bucket:
+      owner: sebaswvv
+      name: scoop-bucket
+    homepage: "https://github.com/sebaswvv/lan-share"
+    description: "Share files instantly over your local network with QR codes"
+    license: "MIT"
