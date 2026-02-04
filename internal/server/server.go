@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 )
 
 // server represents the HTTP server for file sharing
@@ -97,11 +98,11 @@ func getValidIPFromInterface(iface net.Interface) string {
 			if ipv4 := ipNet.IP.To4(); ipv4 != nil {
 				ip := ipv4.String()
 				// skip link-local addresses (169.254.x.x)
-				if len(ip) >= 7 && ip[:7] == "169.254" {
+				if strings.HasPrefix(ip, "169.254") {
 					continue
 				}
 				// skip common virtual adapter ranges
-				if len(ip) >= 11 && (ip[:11] == "192.168.176" || ip[:11] == "192.168.224") {
+				if strings.HasPrefix(ip, "192.168.176") || strings.HasPrefix(ip, "192.168.224") {
 					continue
 				}
 				// found a good IP
