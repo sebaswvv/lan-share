@@ -4,12 +4,7 @@
 
 ## 📦 Installation
 
-### macOS / Linux (Homebrew)
-
-```bash
-brew tap sebaswvv/tap
-brew install lanshare
-```
+> **Note:** macOS support is currently in development and not yet functional.
 
 ### Windows (Scoop)
 
