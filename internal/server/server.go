@@ -101,7 +101,9 @@ func getValidIPFromInterface(iface net.Interface) string {
 				if strings.HasPrefix(ip, "169.254") {
 					continue
 				}
-				// skip common virtual adapter ranges
+				// skip common virtual adapter ranges used by VirtualBox and VMware
+				// 192.168.176.x - VMware NAT
+				// 192.168.224.x - VirtualBox host-only adapter
 				if strings.HasPrefix(ip, "192.168.176") || strings.HasPrefix(ip, "192.168.224") {
 					continue
 				}
