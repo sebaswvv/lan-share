@@ -43,7 +43,7 @@ brews:
     license: "MIT"
 
 scoops:
-  - bucket:
+  - repository:
       owner: sebaswvv
       name: scoop-bucket
     homepage: "https://github.com/sebaswvv/lan-share"
