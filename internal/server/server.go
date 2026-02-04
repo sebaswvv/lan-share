@@ -52,14 +52,14 @@ func GetLocalIP() (string, error) {
 
 	// prioritize physical network interfaces (especially for Mac OS)
 	priorityInterfaces := []string{"en0", "en1", "eth0", "wlan0"}
-	
+
 	// first pass: try priority interfaces
 	for _, priorityName := range priorityInterfaces {
 		for _, iface := range ifaces {
 			if iface.Name != priorityName {
 				continue
 			}
-			
+
 			// skip loopback and down interfaces
 			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 				continue
@@ -110,6 +110,6 @@ func getValidIPFromInterface(iface net.Interface) string {
 			}
 		}
 	}
-	
+
 	return ""
 }
