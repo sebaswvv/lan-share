@@ -204,9 +204,7 @@ func setupServerForPaths(paths []string) (*server.Server, func()) {
 				log.Fatalf("Error creating archive: %v", err)
 			}
 			filePath = zipPath
-			cleanup = func() {
-				os.Remove(zipPath)
-			}
+			cleanup = createCleanupFunc(zipPath)
 		}
 	} else {
 		// Multiple paths - create zip
@@ -215,14 +213,18 @@ func setupServerForPaths(paths []string) (*server.Server, func()) {
 			log.Fatalf("Error creating archive: %v", err)
 		}
 		filePath = zipPath
-		cleanup = func() {
-			os.Remove(zipPath)
-		}
+		cleanup = createCleanupFunc(zipPath)
 	}
 	
 	fileHandler := server.NewFileHandler(filePath)
 	mux := fileHandler.SetupRoutes()
 	return server.New(port, mux), cleanup
+}
+
+func createCleanupFunc(zipPath string) func() {
+	return func() {
+		os.Remove(zipPath)
+	}
 }
 
 func init() {

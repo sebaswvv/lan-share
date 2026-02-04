@@ -20,20 +20,34 @@ func CreateZipArchive(paths []string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer tmpFile.Close()
+	tmpPath := tmpFile.Name()
 
 	zipWriter := zip.NewWriter(tmpFile)
-	defer zipWriter.Close()
 
+	// Add all paths to the zip
 	for _, path := range paths {
 		err := addToZip(zipWriter, path, "")
 		if err != nil {
-			os.Remove(tmpFile.Name())
+			zipWriter.Close()
+			tmpFile.Close()
+			os.Remove(tmpPath)
 			return "", fmt.Errorf("failed to add '%s' to zip: %w", path, err)
 		}
 	}
 
-	return tmpFile.Name(), nil
+	// Close the zip writer and check for errors
+	if err := zipWriter.Close(); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+		return "", fmt.Errorf("failed to close zip writer: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpPath)
+		return "", fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	return tmpPath, nil
 }
 
 // addToZip adds a file or directory to the zip archive
@@ -63,6 +77,13 @@ func addFileToZip(zipWriter *zip.Writer, filePath, baseInZip string) error {
 		pathInZip = filepath.Base(filePath)
 	} else {
 		pathInZip = filepath.Join(baseInZip, filepath.Base(filePath))
+	}
+
+	// Clean and validate the path to prevent path traversal
+	pathInZip = filepath.Clean(pathInZip)
+	// Ensure the path doesn't escape (no leading .. or absolute path)
+	if strings.HasPrefix(pathInZip, "..") || filepath.IsAbs(pathInZip) {
+		return fmt.Errorf("invalid path in archive: %s", pathInZip)
 	}
 
 	// Create the file in the zip
