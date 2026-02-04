@@ -56,32 +56,6 @@ Navigate folders with arrow keys and press Enter to select!
 
 ```
 
-## 📸 What You'll See
-
-```
-Sharing file: document.pdf
-
-✓ Server started successfully!
-
-📱 Scan QR code or use the URL below:
-
-█████████████████████████████
-█████████████████████████████
-████ ▄▄▄▄▄ █▀ █▀█ ▄▄▄▄▄ ████
-████ █   █ █▀▄ █ █   █ ████
-████ █▄▄▄█ ██ ▀▀█ █▄▄▄█ ████
-[...]
-
-🌐  URL: http://192.168.1.100:8080
-
-📡 Waiting for connections... Press Ctrl+C to stop
-```
-
-When someone downloads:
-```
-📤 Sending document.pdf [████████░░░░] 75% | 15 MB/20 MB | 2.1 MB/s
-```
-
 ## 🌟 How It Works
 
 1. Run `lanshare share yourfile.pdf`
