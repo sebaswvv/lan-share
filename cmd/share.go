@@ -19,45 +19,53 @@ var port string
 
 // shareCmd represents the share command
 var shareCmd = &cobra.Command{
-	Use:   "share [file]",
-	Short: "Share a file over the local network",
-	Long: `Share a file over the local network. 
-Provide the path to the file you want to share as an argument.
-The file must exist and cannot be a directory.`,
-	Args: cobra.MaximumNArgs(1),
+	Use:   "share [file/folder...]",
+	Short: "Share files or folders over the local network",
+	Long: `Share one or more files or folders over the local network. 
+Provide the path(s) to the file(s) or folder(s) you want to share as arguments.
+Multiple files/folders will be automatically zipped together.
+Folders will be zipped with their contents.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var filePath string
+		var paths []string
 		if len(args) == 0 {
 			var err error
-			filePath, err = selectFile()
+			path, err := selectFileOrFolder()
 			if err != nil {
-				log.Fatalf("Error selecting file: %v", err)
+				log.Fatalf("Error selecting: %v", err)
 			}
+			paths = []string{path}
 		} else {
-			filePath = args[0]
+			paths = args
 		}
 
-		if err := validateFile(filePath); err != nil {
+		if err := validatePaths(paths); err != nil {
 			log.Fatalf("Error: %v", err)
 		}
 
-		fmt.Printf("Sharing file: %s\n", filePath)
+		if len(paths) == 1 {
+			fmt.Printf("Sharing: %s\n", paths[0])
+		} else {
+			fmt.Printf("Sharing %d items:\n", len(paths))
+			for _, p := range paths {
+				fmt.Printf("  - %s\n", p)
+			}
+		}
 
 		localIP := getLocalIP()
-		srv := setupServer(filePath)
+		srv, cleanup := setupServerForPaths(paths)
 
 		displayServerInfo(localIP, port, "download")
-		runServerWithGracefulShutdown(srv, nil)
+		runServerWithGracefulShutdown(srv, cleanup)
 	},
 }
 
-func selectFile() (string, error) {
+func selectFileOrFolder() (string, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 
-	pterm.DefaultSection.Println("📂 File Selection")
+	pterm.DefaultSection.Println("📂 File/Folder Selection")
 	fmt.Println()
 
 	for {
@@ -76,6 +84,10 @@ func selectFile() (string, error) {
 			options = append(options, "📁 .. (parent directory)")
 			items = append(items, nil)
 		}
+
+		// add current folder as shareable option
+		options = append(options, "📦 [Share this entire folder]")
+		items = append(items, nil)
 
 		// add folders first, then files
 		for _, entry := range entries {
@@ -101,7 +113,7 @@ func selectFile() (string, error) {
 		// create interactive select
 		selected, err := pterm.DefaultInteractiveSelect.
 			WithOptions(options).
-			WithDefaultText("Select a file or folder (↑/↓ to navigate, Enter to select)").
+			WithDefaultText("Select a file, folder, or choose to share current folder (↑/↓ to navigate, Enter to select)").
 			WithMaxHeight(15).
 			Show()
 
@@ -123,9 +135,14 @@ func selectFile() (string, error) {
 		}
 
 		// handle parent directory
-		if selectedIndex == 0 && currentDir != filepath.Dir(currentDir) && items[0] == nil {
+		if selected == "📁 .. (parent directory)" {
 			currentDir = filepath.Dir(currentDir)
 			continue
+		}
+
+		// handle share current folder
+		if selected == "📦 [Share this entire folder]" {
+			return currentDir, nil
 		}
 
 		entry := items[selectedIndex]
@@ -134,7 +151,20 @@ func selectFile() (string, error) {
 		}
 
 		if entry.IsDir() {
-			// navigate into directory
+			// Ask if user wants to share the folder or navigate into it
+			choice, err := pterm.DefaultInteractiveSelect.
+				WithOptions([]string{"📦 Share this folder", "📂 Navigate into folder"}).
+				WithDefaultText("What would you like to do?").
+				Show()
+			
+			if err != nil {
+				return "", fmt.Errorf("error selecting action: %w", err)
+			}
+
+			if choice == "📦 Share this folder" {
+				return filepath.Join(currentDir, entry.Name()), nil
+			}
+			// Navigate into directory
 			currentDir = filepath.Join(currentDir, entry.Name())
 		} else {
 			// selected a file
@@ -143,26 +173,56 @@ func selectFile() (string, error) {
 	}
 }
 
-func validateFile(filePath string) error {
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("file '%s' does not exist", filePath)
+func validatePaths(paths []string) error {
+	for _, path := range paths {
+		_, err := os.Stat(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("path '%s' does not exist", path)
+			}
+			return fmt.Errorf("unable to access path '%s': %w", path, err)
 		}
-		return fmt.Errorf("unable to access file '%s': %w", filePath, err)
 	}
-
-	if fileInfo.IsDir() {
-		return fmt.Errorf("'%s' is a directory, not a file", filePath)
-	}
-
 	return nil
 }
 
-func setupServer(filePath string) *server.Server {
+func setupServerForPaths(paths []string) (*server.Server, func()) {
+	var filePath string
+	var cleanup func()
+	
+	// Check if we have a single file (not a directory)
+	if len(paths) == 1 {
+		info, err := os.Stat(paths[0])
+		if err == nil && !info.IsDir() {
+			// Single file - serve it directly
+			filePath = paths[0]
+			cleanup = nil
+		} else {
+			// Single directory or error - create zip
+			zipPath, err := server.CreateZipArchive(paths)
+			if err != nil {
+				log.Fatalf("Error creating archive: %v", err)
+			}
+			filePath = zipPath
+			cleanup = func() {
+				os.Remove(zipPath)
+			}
+		}
+	} else {
+		// Multiple paths - create zip
+		zipPath, err := server.CreateZipArchive(paths)
+		if err != nil {
+			log.Fatalf("Error creating archive: %v", err)
+		}
+		filePath = zipPath
+		cleanup = func() {
+			os.Remove(zipPath)
+		}
+	}
+	
 	fileHandler := server.NewFileHandler(filePath)
 	mux := fileHandler.SetupRoutes()
-	return server.New(port, mux)
+	return server.New(port, mux), cleanup
 }
 
 func init() {
