@@ -2,40 +2,26 @@
 
 > Share files instantly over your local network with QR codes - no installation, no cloud, just direct transfers
 
-## 📦 Installation (No Go Required!)
+## 📦 Installation
 
-### Windows
+### macOS / Linux (Homebrew)
 
-1. Go to [Releases](https://github.com/yourusername/lan-share/releases/latest)
-2. Download `lanshare_Windows_x86_64.zip`
-3. Extract the zip file
-4. Double-click `lanshare.exe` or run from PowerShell/CMD
+```bash
+brew tap sebaswvv/tap
+brew install lanshare
+```
+
+### Windows (Scoop)
 
 ```powershell
-# After extracting, run:
-.\lanshare.exe share myfile.txt
+scoop bucket add lanshare https://github.com/sebaswvv/scoop-bucket
+scoop install lanshare
 ```
 
-### macOS
-
-1. Go to [Releases](https://github.com/yourusername/lan-share/releases/latest)
-2. Download `lanshare_Darwin_x86_64.tar.gz` (Intel) or `lanshare_Darwin_arm64.tar.gz` (Apple Silicon)
-3. Extract and move to PATH:
+### Using Go
 
 ```bash
-tar -xzf lanshare_Darwin_*.tar.gz
-sudo mv lanshare /usr/local/bin/
-```
-
-### Linux
-
-1. Go to [Releases](https://github.com/yourusername/lan-share/releases/latest)
-2. Download `lanshare_Linux_x86_64.tar.gz`
-3. Extract and install:
-
-```bash
-tar -xzf lanshare_Linux_x86_64.tar.gz
-sudo mv lanshare /usr/local/bin/
+go install github.com/sebaswvv/lan-share@latest
 ```
 
 ## 🚀 Quick Start
