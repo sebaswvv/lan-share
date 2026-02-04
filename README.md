@@ -4,6 +4,13 @@
 
 ## 📦 Installation
 
+### macOS/Linux (Homebrew)
+
+```bash
+brew tap sebaswvv/tap
+brew install lanshare
+```
+
 ### Windows (Scoop)
 
 ```powershell
