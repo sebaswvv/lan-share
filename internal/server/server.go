@@ -66,11 +66,11 @@ func GetLocalIP() (string, error) {
 					ip := ipv4.String()
 					// skip link-local addresses (169.254.x.x)
 					// prefer 192.168.x.x or 10.x.x.x ranges
-					if ip[:7] == "169.254" {
+					if len(ip) >= 7 && ip[:7] == "169.254" {
 						continue
 					}
 					// skip common virtual adapter ranges
-					if ip[:11] == "192.168.176" || ip[:11] == "192.168.224" {
+					if len(ip) >= 11 && (ip[:11] == "192.168.176" || ip[:11] == "192.168.224") {
 						continue
 					}
 					// found a good IP
