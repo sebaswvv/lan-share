@@ -10,11 +10,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/fatih/color"
 	qrterminal "github.com/mdp/qrterminal/v3"
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
 
@@ -27,9 +29,14 @@ var shareCmd = &cobra.Command{
 	Long: `Share a file over the local network. 
 Provide the path to the file you want to share as an argument.
 The file must exist and cannot be a directory.`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		filePath := args[0]
+		var filePath string
+		if len(args) == 0 {
+			filePath = selectFile()
+		} else {
+			filePath = args[0]
+		}
 
 		validateFile(filePath)
 		fmt.Printf("Sharing file: %s\n", filePath)
@@ -40,6 +47,98 @@ The file must exist and cannot be a directory.`,
 		displayServerInfo(localIP)
 		runServer(srv)
 	},
+}
+
+func selectFile() string {
+	currentDir, _ := os.Getwd()
+
+	pterm.DefaultSection.Println("📂 File Selection")
+	fmt.Println()
+
+	for {
+		// get items in current directory
+		entries, err := os.ReadDir(currentDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading directory: %v\n", err)
+			os.Exit(1)
+		}
+
+		var options []string
+		var items []os.DirEntry
+
+		// add parent directory option
+		parentDir := filepath.Dir(currentDir)
+		if currentDir != parentDir {
+			options = append(options, "📁 .. (parent directory)")
+			items = append(items, nil)
+		}
+
+		// add folders first, then files
+		for _, entry := range entries {
+			if entry.IsDir() {
+				options = append(options, "📁 "+entry.Name()+"/")
+				items = append(items, entry)
+			}
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				options = append(options, "📄 "+entry.Name())
+				items = append(items, entry)
+			}
+		}
+
+		if len(options) == 0 {
+			fmt.Println("No files or folders found")
+			os.Exit(1)
+		}
+
+		// show current directory
+		pterm.DefaultBasicText.Printf("Current: %s\n\n", currentDir)
+
+		// create interactive select
+		selected, err := pterm.DefaultInteractiveSelect.
+			WithOptions(options).
+			WithDefaultText("Select a file or folder (↑/↓ to navigate, Enter to select)").
+			WithMaxHeight(15).
+			Show()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error selecting: %v\n", err)
+			os.Exit(1)
+		}
+
+		// find selected index
+		selectedIndex := -1
+		for i, opt := range options {
+			if opt == selected {
+				selectedIndex = i
+				break
+			}
+		}
+
+		if selectedIndex == -1 {
+			continue
+		}
+
+		// handle parent directory
+		if selectedIndex == 0 && currentDir != filepath.Dir(currentDir) && items[0] == nil {
+			currentDir = filepath.Dir(currentDir)
+			continue
+		}
+
+		entry := items[selectedIndex]
+		if entry == nil {
+			continue
+		}
+
+		if entry.IsDir() {
+			// navigate into directory
+			currentDir = filepath.Join(currentDir, entry.Name())
+		} else {
+			// selected a file
+			return filepath.Join(currentDir, entry.Name())
+		}
+	}
 }
 
 func validateFile(filePath string) {
