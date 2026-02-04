@@ -9,42 +9,40 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"time"
 )
 
-// server represents the HTTP server for file sharing
+// Server represents the HTTP server for file sharing
 type Server struct {
 	httpServer *http.Server
 	port       string
 }
 
-// new creates a new server instance
+// New creates a new server instance
 func New(port string, handler http.Handler) *Server {
 	return &Server{
 		httpServer: &http.Server{
 			Addr:           ":" + port,
 			Handler:        handler,
-			ReadTimeout:    30 * time.Second,
-			WriteTimeout:   30 * time.Second,
-			MaxHeaderBytes: 1 << 20,
+			MaxHeaderBytes: MaxHeaderBytes,
+			// No ReadTimeout/WriteTimeout for large file transfers
 		},
 		port: port,
 	}
 }
 
-// start starts the HTTP server
+// Start starts the HTTP server
 func (s *Server) Start() error {
 	log.Printf("Starting server on port %s", s.port)
 	return s.httpServer.ListenAndServe()
 }
 
-// shutdown gracefully shuts down the server
+// Shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
 	log.Println("Shutting down server...")
 	return s.httpServer.Shutdown(ctx)
 }
 
-// getLocalIP returns the local IP address of the machine
+// GetLocalIP returns the local IP address of the machine
 func GetLocalIP() (string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {

@@ -4,18 +4,13 @@ Copyright © 2026 Sebastiaan van Vliet <sebastiaan.van.vliet@hotmail.nl>
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"lanshare/internal/server"
 	"log"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 
-	"github.com/fatih/color"
-	qrterminal "github.com/mdp/qrterminal/v3"
+	"github.com/sebaswvv/lan-share/internal/server"
+
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
@@ -33,24 +28,34 @@ The file must exist and cannot be a directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var filePath string
 		if len(args) == 0 {
-			filePath = selectFile()
+			var err error
+			filePath, err = selectFile()
+			if err != nil {
+				log.Fatalf("Error selecting file: %v", err)
+			}
 		} else {
 			filePath = args[0]
 		}
 
-		validateFile(filePath)
+		if err := validateFile(filePath); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+
 		fmt.Printf("Sharing file: %s\n", filePath)
 
 		localIP := getLocalIP()
-		srv := setupServer(filePath, localIP)
+		srv := setupServer(filePath)
 
-		displayServerInfo(localIP)
-		runServer(srv)
+		displayServerInfo(localIP, port, "download")
+		runServerWithGracefulShutdown(srv, nil)
 	},
 }
 
-func selectFile() string {
-	currentDir, _ := os.Getwd()
+func selectFile() (string, error) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
 
 	pterm.DefaultSection.Println("📂 File Selection")
 	fmt.Println()
@@ -59,8 +64,7 @@ func selectFile() string {
 		// get items in current directory
 		entries, err := os.ReadDir(currentDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading directory: %v\n", err)
-			os.Exit(1)
+			return "", fmt.Errorf("error reading directory: %w", err)
 		}
 
 		var options []string
@@ -88,8 +92,7 @@ func selectFile() string {
 		}
 
 		if len(options) == 0 {
-			fmt.Println("No files or folders found")
-			os.Exit(1)
+			return "", fmt.Errorf("no files or folders found")
 		}
 
 		// show current directory
@@ -103,8 +106,7 @@ func selectFile() string {
 			Show()
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error selecting: %v\n", err)
-			os.Exit(1)
+			return "", fmt.Errorf("error selecting: %w", err)
 		}
 
 		// find selected index
@@ -136,91 +138,36 @@ func selectFile() string {
 			currentDir = filepath.Join(currentDir, entry.Name())
 		} else {
 			// selected a file
-			return filepath.Join(currentDir, entry.Name())
+			return filepath.Join(currentDir, entry.Name()), nil
 		}
 	}
 }
 
-func validateFile(filePath string) {
+func validateFile(filePath string) error {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Error: file '%s' does not exist\n", filePath)
-			os.Exit(1)
+			return fmt.Errorf("file '%s' does not exist", filePath)
 		}
-		fmt.Fprintf(os.Stderr, "Error: unable to access file '%s': %v\n", filePath, err)
-		os.Exit(1)
+		return fmt.Errorf("unable to access file '%s': %w", filePath, err)
 	}
 
 	if fileInfo.IsDir() {
-		fmt.Fprintf(os.Stderr, "Error: '%s' is a directory, not a file\n", filePath)
-		os.Exit(1)
+		return fmt.Errorf("'%s' is a directory, not a file", filePath)
 	}
+
+	return nil
 }
 
-func getLocalIP() string {
-	localIP, err := server.GetLocalIP()
-	if err != nil {
-		log.Printf("Warning: could not determine local IP: %v", err)
-		return "localhost"
-	}
-	return localIP
-}
-
-func setupServer(filePath, localIP string) *server.Server {
+func setupServer(filePath string) *server.Server {
 	fileHandler := server.NewFileHandler(filePath)
 	mux := fileHandler.SetupRoutes()
 	return server.New(port, mux)
-}
-
-func displayServerInfo(localIP string) {
-	green := color.New(color.FgGreen, color.Bold)
-	cyan := color.New(color.FgCyan, color.Bold)
-	magenta := color.New(color.FgMagenta, color.Bold)
-	yellow := color.New(color.FgYellow)
-
-	url := fmt.Sprintf("http://%s:%s", localIP, port)
-
-	fmt.Println()
-	green.Println("✓ Server started successfully!")
-	fmt.Println()
-	magenta.Println("📱 Scan QR code or use the URL below:")
-	fmt.Println()
-	qrterminal.GenerateHalfBlock(url, qrterminal.L, os.Stdout)
-	fmt.Println()
-	magenta.Print("🌐  URL: ")
-	cyan.Println(url)
-	fmt.Println()
-	yellow.Println("📡 Waiting for connections... Press Ctrl+C to stop")
-	fmt.Println()
-}
-
-func runServer(srv *server.Server) {
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		if err := srv.Start(); err != nil {
-			log.Fatalf("Server error: %v", err)
-		}
-	}()
-
-	<-sigChan
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("Error during shutdown: %v", err)
-	}
-
-	red := color.New(color.FgRed, color.Bold)
-	red.Println("\n🛑 Server stopped.")
 }
 
 func init() {
 	rootCmd.AddCommand(shareCmd)
 
 	// add port flag
-	shareCmd.Flags().StringVarP(&port, "port", "p", "8080", "Port to run the server on")
+	shareCmd.Flags().StringVarP(&port, "port", "p", server.DefaultPort, "Port to run the server on")
 }

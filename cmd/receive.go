@@ -4,12 +4,10 @@ Copyright © 2026 Sebastiaan van Vliet <sebastiaan.van.vliet@hotmail.nl>
 package cmd
 
 import (
-	"fmt"
-	"lanshare/internal/server"
-	"os"
+	"context"
 
-	"github.com/fatih/color"
-	qrterminal "github.com/mdp/qrterminal/v3"
+	"github.com/sebaswvv/lan-share/internal/server"
+
 	"github.com/spf13/cobra"
 )
 
@@ -22,48 +20,30 @@ var receiveCmd = &cobra.Command{
 	Long:  `Start a server that allows other devices to upload files to your computer.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		localIP := getLocalIP()
-		srv := setupReceiveServer()
+		uploadHandler := server.NewUploadHandler()
+		srv := setupReceiveServer(uploadHandler)
 
-		displayReceiveInfo(localIP)
-		runServer(srv)
+		// start processing uploads in background with shutdown signal
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go uploadHandler.ProcessUploads(ctx)
+
+		displayServerInfo(localIP, receivePort, "upload")
+		runServerWithGracefulShutdown(srv, func() {
+			cancel() // signal upload processor to stop
+		})
 	},
 }
 
-func setupReceiveServer() *server.Server {
-	uploadHandler := server.NewUploadHandler()
-
-	// start processing uploads in background
-	go uploadHandler.ProcessUploads()
-
+func setupReceiveServer(uploadHandler *server.UploadHandler) *server.Server {
 	mux := uploadHandler.SetupRoutes()
 	return server.New(receivePort, mux)
-}
-
-func displayReceiveInfo(localIP string) {
-	green := color.New(color.FgGreen, color.Bold)
-	cyan := color.New(color.FgCyan, color.Bold)
-	magenta := color.New(color.FgMagenta, color.Bold)
-	yellow := color.New(color.FgYellow)
-
-	url := fmt.Sprintf("http://%s:%s", localIP, receivePort)
-
-	fmt.Println()
-	green.Println("✓ Server started successfully!")
-	fmt.Println()
-	magenta.Println("📱 Scan QR code to upload files:")
-	fmt.Println()
-	qrterminal.GenerateHalfBlock(url, qrterminal.L, os.Stdout)
-	fmt.Println()
-	magenta.Print("🌐  URL: ")
-	cyan.Println(url)
-	fmt.Println()
-	yellow.Println("📥 Waiting for uploads... Press Ctrl+C to stop")
-	fmt.Println()
 }
 
 func init() {
 	rootCmd.AddCommand(receiveCmd)
 
 	// add port flag
-	receiveCmd.Flags().StringVarP(&receivePort, "port", "p", "8080", "Port to run the server on")
+	receiveCmd.Flags().StringVarP(&receivePort, "port", "p", server.DefaultPort, "Port to run the server on")
 }
