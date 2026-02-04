@@ -11,38 +11,38 @@ import (
 	"net/http"
 )
 
-// Server represents the HTTP server for file sharing
+// server represents the HTTP server for file sharing
 type Server struct {
 	httpServer *http.Server
 	port       string
 }
 
-// New creates a new server instance
+// new creates a new server instance
 func New(port string, handler http.Handler) *Server {
 	return &Server{
 		httpServer: &http.Server{
 			Addr:           ":" + port,
 			Handler:        handler,
 			MaxHeaderBytes: MaxHeaderBytes,
-			// No ReadTimeout/WriteTimeout for large file transfers
+			// no ReadTimeout/WriteTimeout for large file transfers
 		},
 		port: port,
 	}
 }
 
-// Start starts the HTTP server
+// start starts the HTTP server
 func (s *Server) Start() error {
 	log.Printf("Starting server on port %s", s.port)
 	return s.httpServer.ListenAndServe()
 }
 
-// Shutdown gracefully shuts down the server
+// shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
 	log.Println("Shutting down server...")
 	return s.httpServer.Shutdown(ctx)
 }
 
-// GetLocalIP returns the local IP address of the machine
+// getLocalIP returns the local IP address of the machine
 func GetLocalIP() (string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {

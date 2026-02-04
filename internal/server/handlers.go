@@ -14,13 +14,13 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-// FileHandler manages file sharing requests
+// fileHandler manages file sharing requests
 type FileHandler struct {
 	filePath string
 	fileName string
 }
 
-// NewFileHandler creates a new file handler
+// newFileHandler creates a new file handler
 func NewFileHandler(filePath string) *FileHandler {
 	return &FileHandler{
 		filePath: filePath,
@@ -28,7 +28,7 @@ func NewFileHandler(filePath string) *FileHandler {
 	}
 }
 
-// ServeHomePage serves the main page with the download button
+// serveHomePage serves the main page with the download button
 func (h *FileHandler) ServeHomePage(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -40,7 +40,7 @@ func (h *FileHandler) ServeHomePage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-// ServeDownload handles file download requests
+// serveDownload handles file download requests
 func (h *FileHandler) ServeDownload(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Download request from %s", r.RemoteAddr)
 
@@ -107,7 +107,7 @@ func (h *FileHandler) ServeDownload(w http.ResponseWriter, r *http.Request) {
 	log.Printf("File successfully downloaded by %s", r.RemoteAddr)
 }
 
-// SetupRoutes sets up the HTTP routes
+// setupRoutes sets up the HTTP routes
 func (h *FileHandler) SetupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.ServeHomePage)

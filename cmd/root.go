@@ -23,8 +23,8 @@ The file is streamed directly from the sender to the receiver and the session
 automatically expires or stops after download.`,
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// execute adds all child commands to the root command and sets flags appropriately.
+// this is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -33,6 +33,6 @@ func Execute() {
 }
 
 func init() {
-	// Cobra supports persistent flags, which, if defined here,
+	// cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 }

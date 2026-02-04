@@ -17,13 +17,13 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-// UploadHandler manages file upload requests
+// uploadHandler manages file upload requests
 type UploadHandler struct {
 	savePath       string
 	pendingUploads chan *PendingUpload
 }
 
-// PendingUpload represents a file waiting for approval
+// pendingUpload represents a file waiting for approval
 type PendingUpload struct {
 	Filename string
 	Filesize int64
@@ -31,7 +31,7 @@ type PendingUpload struct {
 	Response chan bool
 }
 
-// NewUploadHandler creates a new upload handler
+// newUploadHandler creates a new upload handler
 func NewUploadHandler() *UploadHandler {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -44,7 +44,7 @@ func NewUploadHandler() *UploadHandler {
 	}
 }
 
-// ServeUploadPage serves the upload page
+// serveUploadPage serves the upload page
 func (h *UploadHandler) ServeUploadPage(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -58,22 +58,22 @@ func (h *UploadHandler) ServeUploadPage(w http.ResponseWriter, r *http.Request) 
 
 // sanitizeFilename removes path traversal attempts and dangerous characters
 func sanitizeFilename(filename string) (string, error) {
-	// Get just the base filename, removing any path components
+	// get just the base filename, removing any path components
 	filename = filepath.Base(filename)
 
-	// Check for empty filename after cleaning
+	// check for empty filename after cleaning
 	if filename == "" || filename == "." || filename == ".." {
 		return "", fmt.Errorf("invalid filename")
 	}
 
-	// Remove any remaining path separators
+	// remove any remaining path separators
 	filename = strings.ReplaceAll(filename, "/", "_")
 	filename = strings.ReplaceAll(filename, "\\", "_")
 
 	return filename, nil
 }
 
-// HandleUpload processes file uploads
+// handleUpload processes file uploads
 func (h *UploadHandler) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -99,7 +99,7 @@ func (h *UploadHandler) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	filename := header.Filename
 	filesize := header.Size
 
-	// Sanitize filename for security
+	// sanitize filename for security
 	filename, err = sanitizeFilename(filename)
 	if err != nil {
 		log.Printf("Invalid filename: %v", err)
@@ -295,7 +295,7 @@ func (h *UploadHandler) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// SetupRoutes sets up the HTTP routes for uploads
+// setupRoutes sets up the HTTP routes for uploads
 func (h *UploadHandler) SetupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.ServeUploadPage)
@@ -303,7 +303,7 @@ func (h *UploadHandler) SetupRoutes() *http.ServeMux {
 	return mux
 }
 
-// ProcessUploads handles pending upload approvals with context cancellation
+// processUploads handles pending upload approvals with context cancellation
 func (h *UploadHandler) ProcessUploads(ctx context.Context) {
 	cyan := color.New(color.FgCyan, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
@@ -312,7 +312,7 @@ func (h *UploadHandler) ProcessUploads(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			// Shutdown requested, reject any pending uploads
+			// shutdown requested, reject any pending uploads
 			for {
 				select {
 				case pending := <-h.pendingUploads:
@@ -394,7 +394,7 @@ func copyFile(src, dst string) error {
 		return fmt.Errorf("failed to copy file: %w", err)
 	}
 
-	// Ensure data is written to disk
+	// ensure data is written to disk
 	if err := dstFile.Sync(); err != nil {
 		return fmt.Errorf("failed to sync file: %w", err)
 	}
