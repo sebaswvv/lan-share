@@ -4,7 +4,12 @@
 
 ## 📦 Installation
 
-> **Note:** macOS support is currently in development and not yet functional.
+### macOS/Linux (Homebrew)
+
+```bash
+brew tap sebaswvv/tap
+brew install lanshare
+```
 
 ### Windows (Scoop)
 
