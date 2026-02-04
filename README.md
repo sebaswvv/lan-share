@@ -4,8 +4,6 @@
 
 ## 📦 Installation
 
-> **Note:** macOS support is currently in development and not yet functional.
-
 ### Windows (Scoop)
 
 ```powershell
